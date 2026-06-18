@@ -1,0 +1,23 @@
+﻿# Serverless Framework
+.serverless/
+node_modules/
+
+# Python
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+.Python
+*.so
+*.egg
+*.egg-info/
+dist/
+build/
+
+# Environment variables
+.env
+*.pem
+
+# OS files
+.DS_Store
+Thumbs.db

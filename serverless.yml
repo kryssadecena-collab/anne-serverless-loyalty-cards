@@ -1,0 +1,177 @@
+service: python-serverless-kryss1234-v3
+
+provider:
+  name: aws
+  runtime: python3.9
+  region: us-east-2
+  environment:
+    TABLE_NAME: !Ref ProductsTable
+    INVENTORY_TABLE_NAME: !Ref ProductInventoryTable
+  iamRoleStatements:
+    # DynamoDB Permissions
+    - Effect: Allow
+      Action:
+        - dynamodb:PutItem
+        - dynamodb:GetItem
+        - dynamodb:Scan
+        - dynamodb:UpdateItem
+        - dynamodb:DeleteItem
+        - dynamodb:Query
+      Resource:
+        - !GetAtt ProductsTable.Arn
+        - !GetAtt ProductInventoryTable.Arn
+
+    # S3 Permissions for Batch Create/Delete
+    - Effect: Allow
+      Action:
+        - s3:GetObject
+        - s3:GetObjectVersion
+      Resource:
+        - arn:aws:s3:::products-s3bucket-kryss1234/*
+
+    # S3 Permissions for Writing Logs (Architecture 4)
+    - Effect: Allow
+      Action:
+        - s3:PutObject
+      Resource:
+        - arn:aws:s3:::products-s3bucket-kryss1234/product-logs/*
+
+    # SQS Permissions (Architecture 4)
+    - Effect: Allow
+      Action:
+        - sqs:SendMessage
+        - sqs:ReceiveMessage
+        - sqs:DeleteMessage
+        - sqs:GetQueueAttributes
+      Resource:
+        - !GetAtt ProductsQueue.Arn
+
+    # SQS GetQueueUrl and SendMessage for create_one
+    - Effect: Allow
+      Action:
+        - sqs:GetQueueUrl
+        - sqs:SendMessage
+      Resource:
+        - arn:aws:sqs:us-east-2:956304645529:products-queue-kryss1234-sqs
+
+    # CloudWatch Logs Permissions (Architecture 4) – FIXED with wildcard
+    - Effect: Allow
+      Action:
+        - logs:CreateLogGroup
+        - logs:CreateLogStream
+        - logs:PutLogEvents
+        - logs:DescribeLogStreams
+      Resource: "*"
+
+functions:
+  hello:
+    handler: handler.hello
+    events:
+      - httpApi:
+          path: /
+          method: get
+
+  getAll:
+    handler: handler.get_all
+    events:
+      - httpApi:
+          path: /loyalty-cards
+          method: get
+
+  getOne:
+    handler: handler.get_one
+    events:
+      - httpApi:
+          path: /loyalty-cards/{id}
+          method: get
+
+  create:
+    handler: handler.create_one
+    events:
+      - httpApi:
+          path: /loyalty-cards
+          method: post
+
+  updateOne:
+    handler: handler.update_one
+    events:
+      - httpApi:
+          path: /loyalty-cards/{id}
+          method: put
+
+  deleteOne:
+    handler: handler.delete_one
+    events:
+      - httpApi:
+          path: /loyalty-cards/{id}
+          method: delete
+
+  addInventory:
+    handler: handler.add_inventory
+    events:
+      - httpApi:
+          path: /inventory/add
+          method: post
+
+  batchCreateProducts:
+    handler: handler.batch_create_products
+    events:
+      - s3:
+          bucket: products-s3bucket-kryss1234
+          event: s3:ObjectCreated:*
+          rules:
+            - prefix: for_create/
+          existing: true
+
+  batchDeleteProducts:
+    handler: handler.batch_delete_products
+    events:
+      - s3:
+          bucket: products-s3bucket-kryss1234
+          event: s3:ObjectCreated:*
+          rules:
+            - prefix: for_delete/
+          existing: true
+
+  receiveMessagesFromSqs:
+    handler: handler.receive_message_from_sqs
+    events:
+      - sqs:
+          arn: !GetAtt ProductsQueue.Arn
+          batchSize: 1
+
+resources:
+  Resources:
+    ProductsTable:
+      Type: AWS::DynamoDB::Table
+      Properties:
+        TableName: products-kryss1234-cf
+        AttributeDefinitions:
+          - AttributeName: product_id
+            AttributeType: S
+        KeySchema:
+          - AttributeName: product_id
+            KeyType: HASH
+        BillingMode: PAY_PER_REQUEST
+
+    ProductInventoryTable:
+      Type: AWS::DynamoDB::Table
+      Properties:
+        TableName: ProductInventory-kryss1234
+        AttributeDefinitions:
+          - AttributeName: product_id
+            AttributeType: S
+          - AttributeName: datetime
+            AttributeType: S
+        KeySchema:
+          - AttributeName: product_id
+            KeyType: HASH
+          - AttributeName: datetime
+            KeyType: RANGE
+        BillingMode: PAY_PER_REQUEST
+
+    ProductsQueue:
+      Type: AWS::SQS::Queue
+      Properties:
+        QueueName: products-queue-kryss1234-sqs
+        VisibilityTimeout: 30
