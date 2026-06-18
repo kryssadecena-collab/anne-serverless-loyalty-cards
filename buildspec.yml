@@ -1,0 +1,37 @@
+version: 0.2
+
+phases:
+  install:
+    runtime-versions:
+      nodejs: 20
+      python: 3.9
+    commands:
+      - echo "Installing Serverless Framework..."
+      - npm install -g serverless@3.38.0
+      - echo "Installing Python dependencies..."
+      - pip install --upgrade pip
+      - pip install -r requirements.txt || echo "No requirements.txt found"
+
+  pre_build:
+    commands:
+      - echo "Configuring AWS region..."
+      - export AWS_DEFAULT_REGION=us-east-2
+
+  build:
+    commands:
+      - echo "Deploying Serverless application..."
+      - serverless deploy --region us-east-2 --stage dev
+
+  post_build:
+    commands:
+      - echo "Deployment completed successfully!"
+
+artifacts:
+  files:
+    - '**/*'
+  discard-paths: no
+
+cache:
+  paths:
+    - '/root/.npm/**/*'
+    - '/root/.serverless/**/*'
