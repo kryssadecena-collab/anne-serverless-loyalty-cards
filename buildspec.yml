@@ -8,6 +8,8 @@ phases:
     commands:
       - echo "Installing Serverless Framework..."
       - npm install -g serverless@3.38.0
+      - echo "Installing project dependencies (plugins)..."
+      - npm install
       - echo "Installing Python dependencies..."
       - pip install --upgrade pip
       - pip install -r requirements.txt || echo "No requirements.txt found"
