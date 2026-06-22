@@ -25,7 +25,7 @@ provider:
   environment:
     TABLE_NAME: products-kryss1234-cf
     INVENTORY_TABLE_NAME: ProductInventory-kryss1234
-    IS_OFFLINE: true
+    IS_OFFLINE: false
   iamRoleStatements:
     # DynamoDB Permissions
     - Effect: Allow
