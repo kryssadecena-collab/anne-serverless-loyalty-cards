@@ -9,10 +9,12 @@ phases:
       - echo "Checking Node.js version..."
       - node -v
       - npm -v
-      - echo "Installing Serverless Framework..."
+      - echo "Installing Serverless Framework (global)..."
       - npm install -g serverless@3.38.0
-      - echo "Installing project dependencies (plugins) from package.json..."
+      - echo "Installing project dependencies (plugins)..."
       - npm install
+      - echo "Removing local Serverless to avoid conflict with global..."
+      - rm -rf node_modules/serverless
       - echo "Installing Python dependencies..."
       - pip install --upgrade pip
       - pip install -r requirements.txt || echo "No requirements.txt found"

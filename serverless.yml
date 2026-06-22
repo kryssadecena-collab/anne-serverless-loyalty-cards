@@ -1,7 +1,9 @@
 service: python-serverless-kryss1234-v3
 
-org: anneserverless06
-app: serverless-loyalty-cards-app
+# Disable dashboard integration completely (fixes CI/CD)
+org: null
+app: null
+useDotenv: false
 
 plugins:
   - serverless-dynamodb-local
@@ -71,7 +73,7 @@ provider:
       Resource:
         - arn:aws:sqs:us-east-2:956304645529:products-queue-kryss1234-sqs
 
-    # CloudWatch Logs Permissions (Architecture 4) – FIXED with wildcard
+    # CloudWatch Logs Permissions (Architecture 4)
     - Effect: Allow
       Action:
         - logs:CreateLogGroup
