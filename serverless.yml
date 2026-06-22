@@ -1,12 +1,29 @@
 service: python-serverless-kryss1234-v3
 
+org: anneserverless06
+app: serverless-loyalty-cards-app
+
+plugins:
+  - serverless-dynamodb-local
+  - serverless-offline
+
+custom:
+  dynamodb:
+    stages:
+      - dev
+    start:
+      port: 8000
+      inMemory: true
+      migrate: true
+
 provider:
   name: aws
   runtime: python3.9
   region: us-east-2
   environment:
-    TABLE_NAME: !Ref ProductsTable
-    INVENTORY_TABLE_NAME: !Ref ProductInventoryTable
+    TABLE_NAME: products-kryss1234-cf
+    INVENTORY_TABLE_NAME: ProductInventory-kryss1234
+    IS_OFFLINE: true
   iamRoleStatements:
     # DynamoDB Permissions
     - Effect: Allow
