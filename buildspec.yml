@@ -6,9 +6,12 @@ phases:
       nodejs: 20
       python: 3.9
     commands:
+      - echo "Checking Node.js version..."
+      - node -v
+      - npm -v
       - echo "Installing Serverless Framework..."
       - npm install -g serverless@3.38.0
-      - echo "Installing project dependencies (plugins)..."
+      - echo "Installing project dependencies (plugins) from package.json..."
       - npm install
       - echo "Installing Python dependencies..."
       - pip install --upgrade pip
