@@ -7,8 +7,8 @@ import csv
 import decimal
 import time
 
-# Detect if running offline
-if os.environ.get('IS_OFFLINE'):
+# Detect if running offline – now handles string "false" correctly
+if os.environ.get('IS_OFFLINE', '').lower() == 'true':
     dynamodb = boto3.resource(
         'dynamodb',
         region_name='us-east-2',
@@ -240,8 +240,8 @@ def batch_create_products(event, context):
         s3_client.download_file(bucket, key, local_filename)
         print(f"[SUCCESS] File downloaded successfully to {local_filename}")
 
-        # --- 🔥 FIX: Use offline endpoint when local ---
-        if os.environ.get('IS_OFFLINE'):
+        # --- Fixed offline check ---
+        if os.environ.get('IS_OFFLINE', '').lower() == 'true':
             dynamodb_resource = boto3.resource(
                 'dynamodb',
                 region_name='us-east-2',
@@ -291,8 +291,8 @@ def batch_delete_products(event, context):
         s3_client.download_file(bucket, key, local_filename)
         print(f"[SUCCESS] File downloaded successfully to {local_filename}")
 
-        # --- 🔥 FIX: Use offline endpoint when local ---
-        if os.environ.get('IS_OFFLINE'):
+        # --- Fixed offline check ---
+        if os.environ.get('IS_OFFLINE', '').lower() == 'true':
             dynamodb_resource = boto3.resource(
                 'dynamodb',
                 region_name='us-east-2',
