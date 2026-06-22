@@ -7,7 +7,15 @@ import csv
 import decimal
 import time
 
-dynamodb = boto3.resource('dynamodb')
+# Detect if running offline
+if os.environ.get('IS_OFFLINE'):
+    dynamodb = boto3.resource(
+        'dynamodb',
+        region_name='us-east-2',
+        endpoint_url='http://localhost:8000'
+    )
+else:
+    dynamodb = boto3.resource('dynamodb', region_name='us-east-2')
 
 # Main products table
 table_name = os.environ.get('TABLE_NAME', 'products-kryss1234-cf')
@@ -99,7 +107,7 @@ def create_one(event, context):
         queue.send_message(
             MessageBody=json.dumps(body, default=str)
         )
-        print(f"✅ SQS message sent for product: {body['product_id']}")
+        print(f"[SUCCESS] SQS message sent for product: {body['product_id']}")
 
         # ----- Push to CloudWatch Logs -----
         logs_client = boto3.client('logs', region_name='us-east-2')
@@ -135,14 +143,14 @@ def create_one(event, context):
                 }
             ]
         )
-        print("✅ Product creation event logged in CloudWatch.")
+        print("[SUCCESS] Product creation event logged in CloudWatch.")
 
         return {
             "statusCode": 201,
             "body": json.dumps({"message": "Product created", "product": item}, default=str)
         }
     except Exception as e:
-        print(f"❌ Error in create_one: {str(e)}")
+        print(f"[ERROR] Error in create_one: {str(e)}")
         return {
             "statusCode": 400,
             "body": json.dumps({"error": str(e)})
@@ -221,20 +229,30 @@ def add_inventory(event, context):
 
 
 def batch_create_products(event, context):
-    print("📁 File uploaded to S3 - triggering batch create...")
+    print("[INFO] File uploaded to S3 - triggering batch create...")
     try:
         bucket = event['Records'][0]['s3']['bucket']['name']
         key = urllib.parse.unquote_plus(event['Records'][0]['s3']['object']['key'])
         local_filename = f'/tmp/{key}'
-        print(f"📥 Downloading s3://{bucket}/{key} to {local_filename}")
+        print(f"[INFO] Downloading s3://{bucket}/{key} to {local_filename}")
         os.makedirs(os.path.dirname(local_filename), exist_ok=True)
         s3_client = boto3.client('s3', region_name='us-east-2')
         s3_client.download_file(bucket, key, local_filename)
-        print(f"✅ File downloaded successfully to {local_filename}")
+        print(f"[SUCCESS] File downloaded successfully to {local_filename}")
+
+        # --- 🔥 FIX: Use offline endpoint when local ---
+        if os.environ.get('IS_OFFLINE'):
+            dynamodb_resource = boto3.resource(
+                'dynamodb',
+                region_name='us-east-2',
+                endpoint_url='http://localhost:8000'
+            )
+        else:
+            dynamodb_resource = boto3.resource('dynamodb', region_name='us-east-2')
 
         table_name = os.environ.get('TABLE_NAME', 'products-kryss1234-cf')
-        dynamodb_resource = boto3.resource('dynamodb', region_name='us-east-2')
         table = dynamodb_resource.Table(table_name)
+
         count = 0
         with open(local_filename, 'r') as f:
             csv_reader = csv.DictReader(f)
@@ -248,13 +266,13 @@ def batch_create_products(event, context):
                 }
                 table.put_item(Item=item)
                 count += 1
-        print(f"✅ Successfully created {count} products in DynamoDB!")
+        print(f"[SUCCESS] Successfully created {count} products in DynamoDB!")
         return {
             "statusCode": 200,
             "body": json.dumps({"message": f"Created {count} products"})
         }
     except Exception as e:
-        print(f"❌ Error: {str(e)}")
+        print(f"[ERROR] Error: {str(e)}")
         return {
             "statusCode": 500,
             "body": json.dumps({"error": str(e)})
@@ -262,20 +280,30 @@ def batch_create_products(event, context):
 
 
 def batch_delete_products(event, context):
-    print("🗑️ File uploaded to S3 (for_delete) - triggering batch delete...")
+    print("[INFO] File uploaded to S3 (for_delete) - triggering batch delete...")
     try:
         bucket = event['Records'][0]['s3']['bucket']['name']
         key = urllib.parse.unquote_plus(event['Records'][0]['s3']['object']['key'])
         local_filename = f'/tmp/{key}'
-        print(f"📥 Downloading s3://{bucket}/{key} to {local_filename}")
+        print(f"[INFO] Downloading s3://{bucket}/{key} to {local_filename}")
         os.makedirs(os.path.dirname(local_filename), exist_ok=True)
         s3_client = boto3.client('s3', region_name='us-east-2')
         s3_client.download_file(bucket, key, local_filename)
-        print(f"✅ File downloaded successfully to {local_filename}")
+        print(f"[SUCCESS] File downloaded successfully to {local_filename}")
+
+        # --- 🔥 FIX: Use offline endpoint when local ---
+        if os.environ.get('IS_OFFLINE'):
+            dynamodb_resource = boto3.resource(
+                'dynamodb',
+                region_name='us-east-2',
+                endpoint_url='http://localhost:8000'
+            )
+        else:
+            dynamodb_resource = boto3.resource('dynamodb', region_name='us-east-2')
 
         table_name = os.environ.get('TABLE_NAME', 'products-kryss1234-cf')
-        dynamodb_resource = boto3.resource('dynamodb', region_name='us-east-2')
         table = dynamodb_resource.Table(table_name)
+
         deleted_count = 0
         not_found_count = 0
         with open(local_filename, 'r') as f:
@@ -291,13 +319,13 @@ def batch_delete_products(event, context):
                     )
                     if response.get('Attributes'):
                         deleted_count += 1
-                        print(f"✅ Deleted product: {product_id}")
+                        print(f"[SUCCESS] Deleted product: {product_id}")
                     else:
                         not_found_count += 1
-                        print(f"⚠️ Product not found: {product_id}")
+                        print(f"[WARNING] Product not found: {product_id}")
                 except Exception as e:
-                    print(f"❌ Error deleting {product_id}: {str(e)}")
-        print(f"✅ Summary: {deleted_count} deleted, {not_found_count} not found")
+                    print(f"[ERROR] Error deleting {product_id}: {str(e)}")
+        print(f"[SUCCESS] Summary: {deleted_count} deleted, {not_found_count} not found")
         return {
             "statusCode": 200,
             "body": json.dumps({
@@ -305,7 +333,7 @@ def batch_delete_products(event, context):
             })
         }
     except Exception as e:
-        print(f"❌ Error: {str(e)}")
+        print(f"[ERROR] Error: {str(e)}")
         return {
             "statusCode": 500,
             "body": json.dumps({"error": str(e)})
@@ -313,7 +341,7 @@ def batch_delete_products(event, context):
 
 
 def receive_message_from_sqs(event, context):
-    print("📨 Received SQS messages:", json.dumps(event, indent=2))
+    print("[INFO] Received SQS messages:", json.dumps(event, indent=2))
     try:
         s3_client = boto3.client('s3', region_name='us-east-2')
         bucket_name = "products-s3bucket-kryss1234"
@@ -329,13 +357,13 @@ def receive_message_from_sqs(event, context):
                 Body=json.dumps(body, indent=2, default=str),
                 ContentType='application/json'
             )
-            print(f"✅ Log stored in s3://{bucket_name}/{filename}")
+            print(f"[SUCCESS] Log stored in s3://{bucket_name}/{filename}")
         return {
             "statusCode": 200,
             "body": json.dumps({"message": "Messages processed"})
         }
     except Exception as e:
-        print(f"❌ Error: {str(e)}")
+        print(f"[ERROR] Error: {str(e)}")
         return {
             "statusCode": 500,
             "body": json.dumps({"error": str(e)})
